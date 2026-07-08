@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "agent-rooms": {
+      "command": "node",
+      "args": ["/home/SEU_USUARIO/tools/agent-rooms/server.mjs"],
+      "env": {
+        "AGENT_NAME": "backend",
+        "AGENT_ROOMS": "general"
+      }
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "agent-rooms",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "MCP channel server for real-time chat between Claude Code sessions",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  }
+}
