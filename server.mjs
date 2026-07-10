@@ -16,63 +16,9 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js'
 import fs from 'node:fs'
 import fsp from 'node:fs/promises'
-import path from 'node:path'
-import os from 'node:os'
-import crypto from 'node:crypto'
 
-// ---------------------------------------------------------------- configuração
-const AGENT_NAME = process.env.AGENT_NAME
-if (!AGENT_NAME || !/^[a-zA-Z0-9_-]+$/.test(AGENT_NAME)) {
-  console.error('agent-rooms: defina AGENT_NAME (letras, números, - e _)')
-  process.exit(1)
-}
-const BASE_DIR = process.env.AGENT_ROOMS_DIR || path.join(os.homedir(), '.agent-rooms')
-const ROOMS_DIR = path.join(BASE_DIR, 'rooms')
-const MY_ROOMS = (process.env.AGENT_ROOMS || 'general')
-  .split(',').map(s => s.trim()).filter(Boolean)
-
-// Freios anti-loop
-const RATE_LIMIT = 10          // máx. de envios por minuto
-const MAX_THREAD_DEPTH = 8     // profundidade de conversa antes do aviso
-
-// ---------------------------------------------------------------- utilidades
-const roomDir = room => path.join(ROOMS_DIR, room)
-
-function assertValidRoom(room) {
-  if (typeof room !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(room)) {
-    throw new Error(`invalid room name: "${room}" (use letters, digits, - and _)`)
-  }
-}
-
-async function ensureDirs() {
-  await fsp.mkdir(ROOMS_DIR, { recursive: true })
-  for (const r of MY_ROOMS) {
-    assertValidRoom(r)
-    await fsp.mkdir(roomDir(r), { recursive: true })
-  }
-}
-
-// Escrita atômica: escreve num .tmp e renomeia. O watcher ignora .tmp,
-// então nenhuma mensagem é lida pela metade.
-let seq = 0
-async function writeMessage(room, msg) {
-  const name = `${Date.now()}-${String(seq++).padStart(4, '0')}-${crypto.randomBytes(3).toString('hex')}.json`
-  const dir = roomDir(room)
-  const tmp = path.join(dir, `.${name}.tmp`)
-  await fsp.writeFile(tmp, JSON.stringify(msg, null, 2))
-  await fsp.rename(tmp, path.join(dir, name))
-}
-
-async function listMessageFiles(room) {
-  const files = await fsp.readdir(roomDir(room))
-  // nomes começam com timestamp -> ordenar por nome = ordenar por chegada
-  return files.filter(f => f.endsWith('.json') && !f.startsWith('.')).sort()
-}
-
-async function readMessage(room, file) {
-  const raw = await fsp.readFile(path.join(roomDir(room), file), 'utf8')
-  return JSON.parse(raw)
-}
+import { AGENT_NAME, ROOMS_DIR, MY_ROOMS, RATE_LIMIT, MAX_THREAD_DEPTH } from './src/config.mjs'
+import { roomDir, assertValidRoom, ensureDirs, writeMessage, listMessageFiles, readMessage } from './src/storage.mjs'
 
 // ---------------------------------------------------------------- servidor MCP
 const mcp = new Server(
