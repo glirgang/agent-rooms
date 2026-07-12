@@ -3,7 +3,7 @@
 import { spawn } from 'node:child_process'
 
 function startAgent(name) {
-  const proc = spawn('node', ['server.mjs'], {
+  const proc = spawn('node', ['server.ts'], {
     env: { ...process.env, AGENT_NAME: name, AGENT_ROOMS: 'general', AGENT_ROOMS_DIR: '/tmp/agent-rooms-test' },
     stdio: ['pipe', 'pipe', 'pipe'],
   })
@@ -42,7 +42,7 @@ const beta = startAgent('beta')
 await sleep(300)
 
 const initA = await alfa.call('initialize', initParams)
-const initB = await beta.call('initialize', initParams)
+await beta.call('initialize', initParams)
 alfa.notify('notifications/initialized', {})
 beta.notify('notifications/initialized', {})
 console.log('   capability channel declarada?',
