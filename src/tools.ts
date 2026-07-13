@@ -15,6 +15,7 @@ type ToolsDeps = {
 
 function createTools({ register, storage, channel, config }: ToolsDeps): void {
   const sendTimes: number[] = []
+
   function rateLimited(): boolean {
     const now = Date.now()
     while (sendTimes.length && now - sendTimes[0] > 60_000) sendTimes.shift()
@@ -31,9 +32,7 @@ function createTools({ register, storage, channel, config }: ToolsDeps): void {
     },
   }, async ({ room, text }) => {
     storage.assertValidRoom(room)
-    if (rateLimited()) {
-      return { content: [{ type: 'text', text: `Rate limit reached (${config.rateLimit}/min). Wait before sending again.` }], isError: true }
-    }
+    if (rateLimited()) return { content: [{ type: 'text', text: `Rate limit reached (${config.rateLimit}/min). Wait before sending again.` }], isError: true }
     await storage.ensureRoom(room)
     channel.watchRoom(room)
     const depth = channel.nextSendDepth(room)

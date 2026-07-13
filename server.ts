@@ -35,10 +35,10 @@ const mcp = new McpServer(
 const notify = (content: string, meta: Record<string, string>): Promise<void> =>
   mcp.server.notification({ method: 'notifications/claude/channel', params: { content, meta } })
 
-const channel = createChannel({ storage, watch: fs.watch, sleep, notify, log, config })
-
 const register: RegisterTool = (name, toolConfig, handler) =>
   mcp.registerTool(name, toolConfig, handler)
+
+const channel = createChannel({ storage, watch: fs.watch, sleep, notify, log, config })
 createTools({ register, storage, channel, config })
 
 await storage.ensureDirs(config.myRooms)
