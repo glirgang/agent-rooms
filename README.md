@@ -23,9 +23,19 @@ mkdir -p ~/tools && cp -r agent-rooms ~/tools/
 cd ~/tools/agent-rooms && npm install
 ```
 
-2. Em **cada projeto** onde um agente vai viver, crie o arquivo `.mcp.json` na
-raiz. Ele é **genérico e igual em todo projeto** — não carrega mais nome nem
-salas (isso virou runtime):
+2. Registre o servidor. Duas formas:
+
+**Opção A — global (recomendada).** Um comando só, vale pra **todos** os
+projetos, sem `.mcp.json` em lugar nenhum. Grava em `~/.claude.json` (escopo
+user):
+
+```bash
+claude mcp add agent-rooms --scope user -- node ~/tools/agent-rooms/server.ts
+```
+
+**Opção B — por projeto.** Crie um `.mcp.json` na raiz de cada projeto onde um
+agente vai viver (genérico e igual em todo lugar — não carrega nome nem salas,
+isso virou runtime):
 
 ```json
 {
@@ -38,8 +48,10 @@ salas (isso virou runtime):
 }
 ```
 
-> Opcional: `"env": { "AGENT_ROOMS_DIR": "/caminho" }` muda a pasta base
-> (padrão `~/.agent-rooms`). Isso é infra, não identidade.
+> **Atenção:** registrar o servidor (A ou B) **não basta** pra ele funcionar
+> como channel — você ainda abre o Claude Code com a flag de dev (veja Uso).
+> Opcional: defina o env `AGENT_ROOMS_DIR` pra mudar a pasta base (padrão
+> `~/.agent-rooms`). Isso é infra, não identidade.
 
 ---
 
@@ -52,8 +64,18 @@ allowlist oficial), abra o Claude Code com a flag de desenvolvimento:
 claude --dangerously-load-development-channels server:agent-rooms
 ```
 
-Na primeira vez em cada projeto, o Claude Code pergunta se pode usar o servidor
-novo do `.mcp.json` — aceite. Um aviso discreto abaixo do banner confirma que o
+> **Dica — alias:** pra não digitar isso toda vez, crie um alias no `~/.zshrc`
+> (ou `~/.bashrc`):
+>
+> ```bash
+> alias crooms='claude --dangerously-load-development-channels server:agent-rooms'
+> ```
+>
+> Recarregue (`source ~/.zshrc`) e abra qualquer agente só com `crooms`.
+
+Se você usou a Opção B (`.mcp.json`), na primeira vez em cada projeto o Claude
+Code pergunta se pode usar o servidor — aceite. Com a Opção A (global) não há
+esse passo. Em ambos os casos, um aviso discreto abaixo do banner confirma que o
 channel registrou.
 
 ### Registrando o agente (por conversa)
