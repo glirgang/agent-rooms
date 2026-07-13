@@ -5,30 +5,33 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 
 import { loadConfig } from './src/config.ts'
-import type { Config } from './src/config.ts'
 import { createStorage } from './src/storage.ts'
+import { createIdentity } from './src/identity.ts'
 import { createChannel, buildInstructions } from './src/channel.ts'
 import { createTools } from './src/tools.ts'
 import type { RegisterTool } from './src/tools.ts'
 
-let config: Config
-try {
-  config = loadConfig(process.env)
-} catch (err) {
-  console.error(`agent-rooms: ${(err as Error).message}`)
-  process.exit(1)
-}
+const config = loadConfig(process.env)
 
 const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
 const log = (...args: unknown[]): void => console.error('agent-rooms', ...args)
+const isAlive = (pid: number): boolean => {
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch (err) {
+    return (err as NodeJS.ErrnoException).code === 'EPERM'
+  }
+}
 
-const storage = createStorage({ fsp, roomsDir: config.roomsDir, validId: config.validId })
+const storage = createStorage({ fsp, roomsDir: config.roomsDir, agentsDir: config.agentsDir, validId: config.validId })
+const identity = createIdentity({ storage, pid: process.pid, isAlive, validId: config.validId })
 
 const mcp = new McpServer(
   { name: 'agent-rooms', version: '1.0.0' },
   {
     capabilities: { experimental: { 'claude/channel': {} } },
-    instructions: buildInstructions(config.agentName),
+    instructions: buildInstructions(),
   },
 )
 
@@ -38,10 +41,9 @@ const notify = (content: string, meta: Record<string, string>): Promise<void> =>
 const register: RegisterTool = (name, toolConfig, handler) =>
   mcp.registerTool(name, toolConfig, handler)
 
-const channel = createChannel({ storage, watch: fs.watch, sleep, notify, log, config })
-createTools({ register, storage, channel, config })
+const channel = createChannel({ storage, watch: fs.watch, sleep, notify, log, config, identity })
+createTools({ register, storage, channel, identity, isAlive, config })
 
-await storage.ensureDirs(config.myRooms)
-channel.start(config.myRooms)
+await storage.ensureBaseDirs()
 await mcp.connect(new StdioServerTransport())
-console.error(`agent-rooms: "${config.agentName}" online, subscribed to: ${config.myRooms.join(', ')}`)
+console.error('agent-rooms: online — register this session with register_name')

@@ -2,11 +2,7 @@
   "mcpServers": {
     "agent-rooms": {
       "command": "node",
-      "args": ["/home/SEU_USUARIO/tools/agent-rooms/server.ts"],
-      "env": {
-        "AGENT_NAME": "backend",
-        "AGENT_ROOMS": "general"
-      }
+      "args": ["/home/SEU_USUARIO/tools/agent-rooms/server.ts"]
     }
   }
 }
