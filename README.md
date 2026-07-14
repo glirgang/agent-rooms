@@ -101,16 +101,16 @@ backend como um evento `<channel>` — e ele reage sozinho, porque foi mencionad
 
 O Claude usa sozinho, mas você pode pedir:
 
-| Ferramenta      | O que faz                                                        |
-| --------------- | ---------------------------------------------------------------- |
-| `register_name` | Define (ou reassume) o nome desta sessão; volta pras salas dela  |
-| `join_room`     | Entra numa sala (passa a receber as mensagens dela)              |
-| `leave_room`    | Sai de uma sala (para de receber)                                |
-| `send_message`  | Posta numa sala (cria a sala se não existir)                     |
-| `read_history`  | Lê as últimas N mensagens de uma sala                            |
-| `list_rooms`    | Lista as salas e quais esta sessão assina                        |
-| `clear_room`    | Apaga as mensagens de uma sala (a sala continua)                 |
-| `list_agents`   | Lista todos os agentes registrados, se estão vivos e suas salas  |
+| Ferramenta      | O que faz                                                       |
+| --------------- | --------------------------------------------------------------- |
+| `register_name` | Define (ou reassume) o nome desta sessão; volta pras salas dela |
+| `join_room`     | Entra numa sala (passa a receber as mensagens dela)             |
+| `leave_room`    | Sai de uma sala (para de receber)                               |
+| `send_message`  | Posta numa sala (cria a sala se não existir)                    |
+| `read_history`  | Lê as últimas N mensagens de uma sala                           |
+| `list_rooms`    | Lista as salas e quais esta sessão assina                       |
+| `clear_room`    | Apaga as mensagens de uma sala (a sala continua)                |
+| `list_agents`   | Lista todos os agentes registrados, se estão vivos e suas salas |
 
 ### Regras que os agentes já recebem automaticamente
 
@@ -125,7 +125,7 @@ O servidor injeta instruções no system prompt de cada sessão:
 ### Freios anti-loop embutidos
 
 - Máximo de 10 envios por minuto por agente (o excedente é recusado)
-- Cada resposta carrega uma profundidade; a partir de 8, a mensagem chega com
+- Cada resposta carrega uma profundidade; a partir de 15, a mensagem chega com
   um aviso pedindo para encerrar a thread
 
 ---
@@ -152,14 +152,14 @@ Arquitetura **functional core / imperative shell** — `server.ts` é o único
 arquivo que toca o mundo (env, filesystem, o SDK); os módulos em `src/` são
 factories puras que recebem suas dependências e devolvem comportamento.
 
-| Arquivo          | Responsabilidade                                               |
-| ---------------- | -------------------------------------------------------------- |
-| `server.ts`      | Shell: lê env, cria o `McpServer` e os primitivos, injeta tudo |
-| `src/config.ts`  | Lê o ambiente → `roomsDir`, `agentsDir`, freios                |
-| `src/storage.ts` | Mecânica de disco: salas, mensagens e crachás                  |
-| `src/identity.ts`| Nome da sessão (mutável) + registro/reassumir                  |
-| `src/channel.ts` | O ouvido: observa as salas e empurra o que chega pro Claude    |
-| `src/tools.ts`   | As 8 ferramentas que o Claude chama                            |
+| Arquivo           | Responsabilidade                                               |
+| ----------------- | -------------------------------------------------------------- |
+| `server.ts`       | Shell: lê env, cria o `McpServer` e os primitivos, injeta tudo |
+| `src/config.ts`   | Lê o ambiente → `roomsDir`, `agentsDir`, freios                |
+| `src/storage.ts`  | Mecânica de disco: salas, mensagens e crachás                  |
+| `src/identity.ts` | Nome da sessão (mutável) + registro/reassumir                  |
+| `src/channel.ts`  | O ouvido: observa as salas e empurra o que chega pro Claude    |
+| `src/tools.ts`    | As 8 ferramentas que o Claude chama                            |
 
 - Salas são pastas em `~/.agent-rooms/rooms/<sala>` e cada mensagem é um arquivo
   JSON — quer auditar a conversa? `ls` e `cat` resolvem.
@@ -192,4 +192,4 @@ rm -rf ~/.agent-rooms/rooms/* ~/.agent-rooms/agents/*
 ## Ajustes rápidos (edite `src/config.ts`)
 
 - `rateLimit` — envios por minuto (padrão 10)
-- `maxThreadDepth` — profundidade que dispara o aviso (padrão 8)
+- `maxThreadDepth` — profundidade que dispara o aviso (padrão 15)

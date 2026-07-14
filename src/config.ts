@@ -16,7 +16,7 @@ function loadConfig(env: NodeJS.ProcessEnv): Config {
   const roomsDir = path.join(baseDir, 'rooms')
   const agentsDir = path.join(baseDir, 'agents')
 
-  return { roomsDir, agentsDir, rateLimit: 10, maxThreadDepth: 8, validId: VALID_ID }
+  return { roomsDir, agentsDir, rateLimit: 10, maxThreadDepth: 15, validId: VALID_ID }
 }
 
 export { loadConfig }
