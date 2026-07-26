@@ -66,12 +66,13 @@ function createTools({ register, storage, channel, identity, isAlive, config }: 
   })
 
   register('send_message', {
-    description: 'Post a message to a room. Everyone in that room receives it immediately. Mention an agent as @name to request action.',
+    description: 'Post a message to a room. Everyone in that room receives it immediately. Mention an agent as @name to request action. Pass "to" to deliver only to specific agents (direct message).',
     inputSchema: {
       room: z.string().min(1).describe('Room name, e.g. "general"'),
       text: z.string().min(1).describe('The message to post'),
+      to: z.array(z.string().min(1)).optional().describe('Agent names that should receive this message; other agents in the room will not see it. Omit to broadcast to the whole room.'),
     },
-  }, async ({ room, text }) => {
+  }, async ({ room, text, to }) => {
     const me = identity.current()
     if (!me) return needsRegister()
     storage.assertValidRoom(room)
@@ -80,8 +81,8 @@ function createTools({ register, storage, channel, identity, isAlive, config }: 
     await identity.addRoom(room)
     channel.watchRoom(room)
     const depth = channel.nextSendDepth(room)
-    await storage.writeMessage(room, { from: me, room, text, depth, ts: new Date().toISOString() })
-    return { content: [{ type: 'text', text: `sent to #${room}` }] }
+    await storage.writeMessage(room, { from: me, room, text, ...(to?.length ? { to } : {}), depth, ts: new Date().toISOString() })
+    return { content: [{ type: 'text', text: to?.length ? `sent to ${to.map(n => `@${n}`).join(', ')} in #${room}` : `sent to #${room}` }] }
   })
 
   register('read_history', {
@@ -95,10 +96,14 @@ function createTools({ register, storage, channel, identity, isAlive, config }: 
     const files = await storage.listMessageFiles(room).catch(() => null)
     if (!files) return { content: [{ type: 'text', text: `room "${room}" does not exist` }], isError: true }
     const recent = files.slice(-Math.max(1, Math.min(200, count)))
+    const me = identity.current()
     const lines: string[] = []
     for (const f of recent) {
       const m = await storage.readMessage(room, f).catch(() => null)
-      if (m) lines.push(`[${m.ts}] ${m.from}: ${m.text}`)
+      if (!m) continue
+      if (m.to?.length && m.from !== me && !(me && m.to.includes(me))) continue
+      const dm = m.to?.length ? ` (dm: ${m.to.map(n => `@${n}`).join(', ')})` : ''
+      lines.push(`[${m.ts}] ${m.from}${dm}: ${m.text}`)
     }
     return { content: [{ type: 'text', text: lines.length ? lines.join('\n') : `#${room} is empty` }] }
   })

@@ -7,6 +7,7 @@ type Message = {
   from: string
   room: string
   text: string
+  to?: string[]
   depth: number
   ts: string
 }

@@ -83,7 +83,23 @@ console.log('9. list_agents...')
 const agents = await alfa.tool('list_agents')
 console.log(agents.content[0].text.split('\n').map(l => '   ' + l).join('\n'))
 
-console.log('10. leave_room: beta sai, nao recebe mais...')
+console.log('10. dm: gamma entra, alfa manda dm so pra beta...')
+await gamma.tool('register_name', { name: 'gamma' })
+await gamma.tool('join_room', { room: 'general' })
+const dmBefore = { beta: pushes(beta).length, gamma: pushes(gamma).length }
+await alfa.tool('send_message', { room: 'general', text: 'so entre nos @beta', to: ['beta'] })
+await sleep(400)
+const betaGot = pushes(beta).length - dmBefore.beta
+const gammaGot = pushes(gamma).length - dmBefore.gamma
+console.log('   beta recebeu dm?', betaGot === 1 ? 'SIM (correto)' : 'NAO (ERRO)', '| gamma recebeu?', gammaGot === 0 ? 'NAO (correto)' : 'SIM (ERRO)')
+
+console.log('11. dm nao aparece no historico de terceiros...')
+const histGamma = await gamma.tool('read_history', { room: 'general' })
+const histBeta = await beta.tool('read_history', { room: 'general' })
+console.log('   gamma ve dm?', histGamma.content[0].text.includes('so entre nos') ? 'SIM (ERRO)' : 'NAO (correto)',
+  '| beta ve dm?', histBeta.content[0].text.includes('so entre nos') ? 'SIM (correto)' : 'NAO (ERRO)')
+
+console.log('12. leave_room: beta sai, nao recebe mais...')
 await beta.tool('leave_room', { room: 'general' })
 await sleep(100)
 const before = beta.notifications.length
@@ -91,7 +107,7 @@ await alfa.tool('send_message', { room: 'general', text: 'ainda ai @beta?' })
 await sleep(400)
 console.log('   beta recebeu apos sair?', beta.notifications.length === before ? 'NAO (correto)' : 'SIM (ERRO)')
 
-console.log('11. clear_room + read_history...')
+console.log('13. clear_room + read_history...')
 await alfa.tool('clear_room', { room: 'general' })
 const hist = await alfa.tool('read_history', { room: 'general' })
 console.log('   historico apos clear:', JSON.stringify(hist.content[0].text))

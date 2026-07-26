@@ -24,7 +24,8 @@ function buildInstructions(): string {
     `otherwise just take note silently. (2) Reply by calling send_message with the same room from the tag. ` +
     `(3) Never reply to messages that don't ask for anything (acknowledgements, thanks, status notes) — ` +
     `courtesy replies between agents create loops. (4) If depth is high, wind the thread down unless there ` +
-    `is a real reason to continue.`
+    `is a real reason to continue. (5) A message with a to="..." attribute is a direct message only its ` +
+    `recipients saw; to reply privately, pass the "to" parameter of send_message.`
 }
 
 const isMessageFile = (filename: string | null): filename is string =>
@@ -51,10 +52,14 @@ function createChannel({ storage, watch, sleep, notify, log, config, identity }:
 
   async function deliver(room: string, filename: string): Promise<void> {
     const msg = await readWithRetry(room, filename)
-    if (!msg || msg.from === identity.current()) return
+    const me = identity.current()
+    if (!msg || msg.from === me) return
+    if (msg.to?.length && (!me || !msg.to.includes(me))) return
     const depth = Number(msg.depth) || 0
     lastIncomingDepth.set(room, depth)
-    await notify(msg.text + threadNotice(depth, config.maxThreadDepth), { room, from: msg.from, depth: String(depth) })
+    const meta: Record<string, string> = { room, from: msg.from, depth: String(depth) }
+    if (msg.to?.length) meta.to = msg.to.join(',')
+    await notify(msg.text + threadNotice(depth, config.maxThreadDepth), meta)
   }
 
   function watchRoom(room: string): void {
