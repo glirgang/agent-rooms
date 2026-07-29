@@ -31,11 +31,12 @@ function createTools({ register, storage, channel, identity, isAlive, config }: 
     ({ content: [{ type: 'text', text: 'Register this session first with register_name.' }], isError: true })
 
   register('register_name', {
-    description: 'Register or reassume this session under a name. Blocks if another live session holds it. Restores previously joined rooms.',
+    description: 'Register or reassume this session under a name. The name is a per-room badge: it only conflicts inside a room (checked on join_room). Rejoins the rooms this name previously held from this directory.',
     inputSchema: { name: z.string().min(1).describe('Agent name, e.g. "backend"') },
   }, async ({ name }) => {
     const outcome = await identity.register(name).catch((err: Error) => err)
     if (outcome instanceof Error) return { content: [{ type: 'text', text: outcome.message }], isError: true }
+    channel.watchedRooms().filter(r => !outcome.rooms.includes(r)).forEach(r => channel.unwatchRoom(r))
     await Promise.all(outcome.rooms.map(r => storage.ensureRoom(r)))
     outcome.rooms.forEach(r => channel.watchRoom(r))
     const rejoined = outcome.rooms.length ? `Rejoined rooms: ${outcome.rooms.join(', ')}.` : 'No rooms yet — use join_room.'
@@ -43,13 +44,14 @@ function createTools({ register, storage, channel, identity, isAlive, config }: 
   })
 
   register('join_room', {
-    description: 'Join a room to start receiving its messages. Requires a registered name.',
+    description: 'Join a room to start receiving its messages. Requires a registered name. Blocks if a live session already holds this name in that room.',
     inputSchema: { room: z.string().min(1).describe('Room name, e.g. "general"') },
   }, async ({ room }) => {
     if (!identity.current()) return needsRegister()
     storage.assertValidRoom(room)
     await storage.ensureRoom(room)
-    await identity.addRoom(room)
+    const outcome = await identity.addRoom(room).catch((err: Error) => err)
+    if (outcome instanceof Error) return { content: [{ type: 'text', text: outcome.message }], isError: true }
     channel.watchRoom(room)
     return { content: [{ type: 'text', text: `joined #${room}` }] }
   })
@@ -78,7 +80,8 @@ function createTools({ register, storage, channel, identity, isAlive, config }: 
     storage.assertValidRoom(room)
     if (rateLimited()) return { content: [{ type: 'text', text: `Rate limit reached (${config.rateLimit}/min). Wait before sending again.` }], isError: true }
     await storage.ensureRoom(room)
-    await identity.addRoom(room)
+    const joined = await identity.addRoom(room).catch((err: Error) => err)
+    if (joined instanceof Error) return { content: [{ type: 'text', text: joined.message }], isError: true }
     channel.watchRoom(room)
     const depth = channel.nextSendDepth(room)
     await storage.writeMessage(room, { from: me, room, text, ...(to?.length ? { to } : {}), depth, ts: new Date().toISOString() })
@@ -127,13 +130,16 @@ function createTools({ register, storage, channel, identity, isAlive, config }: 
   })
 
   register('list_agents', {
-    description: 'List all registered agents, whether their session is alive, and their rooms.',
+    description: 'List agents per room, whether their session is alive, and the directory each one works from.',
     inputSchema: {},
   }, async () => {
-    const agents = await storage.listAgents()
-    if (!agents.length) return { content: [{ type: 'text', text: 'no agents registered' }] }
-    const lines = agents.map(a => `@${a.name} (${isAlive(a.pid) ? 'alive' : 'offline'}) — rooms: ${a.rooms.join(', ') || 'none'}`)
-    return { content: [{ type: 'text', text: lines.join('\n') }] }
+    const rooms = await storage.listRoomNames()
+    const lines: string[] = []
+    for (const room of rooms) {
+      const members = await storage.listMembers(room)
+      members.forEach(m => lines.push(`#${room} @${m.name} (${isAlive(m.pid) ? 'alive' : 'offline'}) — ${m.cwd}`))
+    }
+    return { content: [{ type: 'text', text: lines.length ? lines.join('\n') : 'no agents in any room' }] }
   })
 }
 

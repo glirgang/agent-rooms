@@ -12,11 +12,12 @@ type Message = {
   ts: string
 }
 
-type Agent = {
+type Member = {
   name: string
+  room: string
   pid: number
-  rooms: string[]
-  registeredAt: string
+  cwd: string
+  joinedAt: string
 }
 
 type StorageDeps = {
@@ -28,7 +29,8 @@ type StorageDeps = {
 
 function createStorage({ fsp, roomsDir, agentsDir, validId }: StorageDeps) {
   const roomDir = (room: string): string => path.join(roomsDir, room)
-  const agentFile = (name: string): string => path.join(agentsDir, `${name}.json`)
+  const memberDir = (room: string): string => path.join(agentsDir, room)
+  const memberFile = (room: string, name: string): string => path.join(memberDir(room), `${name}.json`)
 
   const assertValidRoom = (room: string): string => {
     if (!validId.test(room)) throw new Error(`invalid room name: "${room}" (use letters, digits, - and _)`)
@@ -75,39 +77,48 @@ function createStorage({ fsp, roomsDir, agentsDir, validId }: StorageDeps) {
     await Promise.all(files.map(f => fsp.rm(path.join(roomDir(room), f), { force: true })))
   }
 
-  function readAgent(name: string): Promise<Agent | null> {
-    return fsp.readFile(agentFile(name), 'utf8')
-      .then(raw => JSON.parse(raw) as Agent)
+  function readMember(room: string, name: string): Promise<Member | null> {
+    return fsp.readFile(memberFile(room, name), 'utf8')
+      .then(raw => JSON.parse(raw) as Member)
       .catch(() => null)
   }
 
-  async function writeAgent(agent: Agent): Promise<void> {
-    const tmp = path.join(agentsDir, `.${agent.name}.json.tmp`)
-    await fsp.writeFile(tmp, JSON.stringify(agent, null, 2))
-    await fsp.rename(tmp, agentFile(agent.name))
+  async function writeMember(member: Member): Promise<void> {
+    await fsp.mkdir(memberDir(member.room), { recursive: true })
+    const tmp = path.join(memberDir(member.room), `.${member.name}.json.tmp`)
+    await fsp.writeFile(tmp, JSON.stringify(member, null, 2))
+    await fsp.rename(tmp, memberFile(member.room, member.name))
   }
 
-  function listAgents(): Promise<Agent[]> {
-    return fsp.readdir(agentsDir)
+  function deleteMember(room: string, name: string): Promise<void> {
+    return fsp.rm(memberFile(room, name), { force: true })
+  }
+
+  function listMembers(room: string): Promise<Member[]> {
+    return fsp.readdir(memberDir(room))
       .then(files => Promise.all(files
         .filter(f => f.endsWith('.json') && !f.startsWith('.'))
-        .map(f => fsp.readFile(path.join(agentsDir, f), 'utf8').then(raw => JSON.parse(raw) as Agent).catch(() => null))))
-      .then(agents => agents.filter((a): a is Agent => a !== null))
+        .map(f => fsp.readFile(path.join(memberDir(room), f), 'utf8').then(raw => JSON.parse(raw) as Member).catch(() => null))))
+      .then(members => members.filter((m): m is Member => m !== null))
       .catch(() => [])
   }
 
-  function deleteAgent(name: string): Promise<void> {
-    return fsp.rm(agentFile(name), { force: true })
+  async function listMemberships(name: string): Promise<Member[]> {
+    const rooms = await fsp.readdir(agentsDir, { withFileTypes: true })
+      .then(entries => entries.filter(d => d.isDirectory()).map(d => d.name))
+      .catch(() => [] as string[])
+    const members = await Promise.all(rooms.map(r => readMember(r, name)))
+    return members.filter((m): m is Member => m !== null)
   }
 
   return {
     roomDir, assertValidRoom, ensureBaseDirs, ensureRoom, listRoomNames,
     writeMessage, listMessageFiles, readMessage, clearRoom,
-    readAgent, writeAgent, listAgents, deleteAgent,
+    readMember, writeMember, deleteMember, listMembers, listMemberships,
   }
 }
 
 type Storage = ReturnType<typeof createStorage>
 
 export { createStorage }
-export type { Storage, Message, Agent }
+export type { Storage, Message, Member }

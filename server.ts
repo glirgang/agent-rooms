@@ -25,7 +25,7 @@ const isAlive = (pid: number): boolean => {
 }
 
 const storage = createStorage({ fsp, roomsDir: config.roomsDir, agentsDir: config.agentsDir, validId: config.validId })
-const identity = createIdentity({ storage, pid: process.pid, isAlive, validId: config.validId })
+const identity = createIdentity({ storage, pid: process.pid, cwd: process.cwd(), isAlive, validId: config.validId })
 
 const mcp = new McpServer(
   { name: 'agent-rooms', version: '1.0.0' },

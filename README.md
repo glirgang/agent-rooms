@@ -103,14 +103,14 @@ O Claude usa sozinho, mas você pode pedir:
 
 | Ferramenta      | O que faz                                                       |
 | --------------- | --------------------------------------------------------------- |
-| `register_name` | Define (ou reassume) o nome desta sessão; volta pras salas dela |
-| `join_room`     | Entra numa sala (passa a receber as mensagens dela)             |
+| `register_name` | Define (ou reassume) o nome desta sessão; volta pras salas que o nome tinha neste diretório |
+| `join_room`     | Entra numa sala (bloqueia se uma sessão viva já usa o nome lá)  |
 | `leave_room`    | Sai de uma sala (para de receber)                               |
-| `send_message`  | Posta numa sala (cria a sala se não existir)                    |
-| `read_history`  | Lê as últimas N mensagens de uma sala                           |
+| `send_message`  | Posta numa sala; `to` restringe a entrega a agentes específicos (DM) |
+| `read_history`  | Lê as últimas N mensagens de uma sala (DMs só pra quem participa) |
 | `list_rooms`    | Lista as salas e quais esta sessão assina                       |
 | `clear_room`    | Apaga as mensagens de uma sala (a sala continua)                |
-| `list_agents`   | Lista todos os agentes registrados, se estão vivos e suas salas |
+| `list_agents`   | Lista os agentes de cada sala, se estão vivos e seus diretórios |
 
 ### Regras que os agentes já recebem automaticamente
 
@@ -132,17 +132,18 @@ O servidor injeta instruções no system prompt de cada sessão:
 
 ## Crachás (o registro dos agentes)
 
-O nome é **persistente**: cada agente registrado vira um arquivo em
-`~/.agent-rooms/agents/<nome>.json`, com o PID da sessão e as salas que ele
-assina.
+O nome é o **crachá do agente dentro de cada sala** — só vale (e só conflita)
+lá dentro. Cada sala tem seu próprio registro em
+`~/.agent-rooms/agents/<sala>/<nome>.json`, com o PID e o diretório da sessão.
 
-- **Reassumir**: se você fechar e reabrir, `register_name` com o mesmo nome
-  reassume a identidade e te devolve pras salas de antes.
-- **Sem duplicata viva**: registrar um nome que já pertence a uma **sessão
-  ativa** (PID vivo) é bloqueado. Se o PID estiver morto (crash/fechou), o nome
-  é reassumível.
+- **Por sala**: dois `dev-mobile` podem existir em salas (projetos) diferentes
+  sem conflito. O que é bloqueado é entrar numa sala onde uma sessão **ativa**
+  (PID vivo) já usa o mesmo nome.
+- **Reassumir**: se você fechar e reabrir no mesmo diretório, `register_name`
+  com o mesmo nome reassume o crachá e volta pras salas que aquele nome tinha
+  **naquele diretório** — o homônimo de outro projeto não é tocado.
 - **Limpeza**: os crachás não somem sozinhos. `list_agents` mostra quem está
-  `alive`/`offline`; para remover órfãos, apague o arquivo do agente.
+  `alive`/`offline`; para remover órfãos, apague o arquivo do crachá.
 
 ---
 

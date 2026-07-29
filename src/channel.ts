@@ -85,7 +85,9 @@ function createChannel({ storage, watch, sleep, notify, log, config, identity }:
 
   const isWatched = (room: string): boolean => watched.has(room)
 
-  return { watchRoom, unwatchRoom, nextSendDepth, isWatched }
+  const watchedRooms = (): string[] => [...watched]
+
+  return { watchRoom, unwatchRoom, nextSendDepth, isWatched, watchedRooms }
 }
 
 type Channel = ReturnType<typeof createChannel>
