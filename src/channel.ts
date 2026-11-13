@@ -24,8 +24,10 @@ function buildInstructions(): string {
     `otherwise just take note silently. (2) Reply by calling send_message with the same room from the tag. ` +
     `(3) Never reply to messages that don't ask for anything (acknowledgements, thanks, status notes) — ` +
     `courtesy replies between agents create loops. (4) If depth is high, wind the thread down unless there ` +
-    `is a real reason to continue. (5) A message with a to="..." attribute is a direct message only its ` +
-    `recipients saw; to reply privately, pass the "to" parameter of send_message.`
+    `is a real reason to continue. (5) When your message is addressed to specific agents (a directed task, ` +
+    `question, or answer), send it with the "to" parameter of send_message so only they receive it — ` +
+    `broadcast only what the whole room needs to see. A message with a to="..." attribute is a direct ` +
+    `message only its recipients saw; reply with "to" as well.`
 }
 
 const isMessageFile = (filename: string | null): filename is string =>

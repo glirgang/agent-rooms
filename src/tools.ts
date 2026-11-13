@@ -68,11 +68,11 @@ function createTools({ register, storage, channel, identity, isAlive, config }: 
   })
 
   register('send_message', {
-    description: 'Post a message to a room. Everyone in that room receives it immediately. Mention an agent as @name to request action. Pass "to" to deliver only to specific agents (direct message).',
+    description: 'Post a message to a room. Mention an agent as @name to request action. If the message only concerns specific agents, pass "to" so only they receive it — broadcast only what the whole room needs to see.',
     inputSchema: {
       room: z.string().min(1).describe('Room name, e.g. "general"'),
       text: z.string().min(1).describe('The message to post'),
-      to: z.array(z.string().min(1)).optional().describe('Agent names that should receive this message; other agents in the room will not see it. Omit to broadcast to the whole room.'),
+      to: z.array(z.string().min(1)).optional().describe('Agent names that should receive this message; other agents in the room will not see it. Prefer this whenever the message is addressed to specific agents (a directed task, question, or answer). Omit only when the whole room should read it.'),
     },
   }, async ({ room, text, to }) => {
     const me = identity.current()
